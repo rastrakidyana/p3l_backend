@@ -27,7 +27,7 @@ class Bahan extends Model
     }
 
     public function menu(){
-        return $this->belongsTo('App\Menu');
+        return $this->belongsTo('App\Menu', 'id_menu');
     }
 
     public function histori_masuks(){

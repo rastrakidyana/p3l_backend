@@ -25,6 +25,8 @@ Route::group(['middleware' => 'auth:api'],function(){
     Route::get('karyawan/{id}', 'Api\Karyawan_Controller@show');
     Route::post('karyawan', 'Api\Karyawan_Controller@store');
     Route::put('karyawan/{id}', 'Api\Karyawan_Controller@update');
+    Route::get('karyawan_status/{id}', 'Api\Karyawan_Controller@status');
+    Route::put('karyawan_change_pass', 'Api\Karyawan_Controller@changePass');
 
     Route::get('jabatan', 'Api\Jabatan_Controller@index');
     Route::get('jabatan/{id}', 'Api\Jabatan_Controller@show');
@@ -65,7 +67,7 @@ Route::group(['middleware' => 'auth:api'],function(){
     Route::get('histori_masuk/{id}', 'Api\Histori_Masuk_Controller@show');
     Route::post('histori_masuk', 'Api\Histori_Masuk_Controller@store');
     Route::put('histori_masuk/{id}', 'Api\Histori_Masuk_Controller@update');
-    // Route::get('histori_masuk_hapus/{id}', 'Api\Histori_Masuk_Controller@destroy');
+    Route::get('histori_masuk_hapus/{id}', 'Api\Histori_Masuk_Controller@destroy');
 
     Route::get('logout','Api\Karyawan_Controller@logout');
 });

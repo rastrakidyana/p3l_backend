@@ -8,21 +8,11 @@ use Illuminate\Validation\Rule;
 use Validator;
 use App\Reservasi;
 use App\Meja;
-use App\Customer;
-use App\Transaksi;
 
 class Reservasi_Controller extends Controller
 {
     public function index(){
-        
-        $reservasis = Reservasi::join('meja', 'reservasi.id_meja', '=', 'meja.id')
-            ->join('customer', 'reservasi.id_customer', '=', 'customer.id')
-            ->join('karyawan', 'reservasi.id_karyawan', '=', 'karyawan.id')
-            // ->join('transaksi', 'reservasi.id_transaksi', '=', 'transaksi.id')
-            ->select('reservasi.id', 'reservasi.id_customer', 'customer.nama_customer', 'reservasi.id_meja', 'meja.no_meja',
-                'reservasi.id_karyawan', 'karyawan.nama_karyawan', 'reservasi.id_transaksi',
-                'reservasi.tgl_reservasi', 'reservasi.jadwal_kunjungan', 'reservasi.kode_qr', 'reservasi.status_hapus')
-            ->where('reservasi.status_hapus', '=', 0)->orderBy('reservasi.created_at', 'DESC')->get();
+        $reservasis = Reservasi::where('status_hapus', '=', 0)->get();
 
         if(count($reservasis) > 0){
             return response([
@@ -65,11 +55,15 @@ class Reservasi_Controller extends Controller
 
         if($validate->fails())
             return response(['message'=> $validate->errors()],400);        
-                
+        
+        $meja = Meja::find($store_data['id_meja']);
+
+        $meja->status_meja = 'Tidak Tersedia';
         $store_data['kode_qr'] = 0;    
         $store_data['status_hapus'] = 0;
 
-        $reservasi = Reservasi::create($store_data);        
+        $reservasi = Reservasi::create($store_data);
+        $meja->save();
         return response([
             'message' => 'Tambah Reservasi Berhasil',
             'data' => $reservasi,
@@ -98,13 +92,13 @@ class Reservasi_Controller extends Controller
         if($validate->fails())
             return response(['message' => $validate->errors()],400);
 
-        // $mejaBaru = Meja::where('id', '=', $update_data['id_meja'])->first();
-        // $mejaLama = Meja::where('id', '=', $reservasi->id_meja)->first();
+        $mejaBaru = Meja::where('id', '=', $update_data['id_meja'])->first();
+        $mejaLama = Meja::where('id', '=', $reservasi->id_meja)->first();
 
-        // if ($mejaBaru->id != $mejaLama->id) {
-        //     $mejaBaru->status_meja = 'Tidak Tersedia';
-        //     $mejaLama->status_meja = 'Tersedia';            
-        // }
+        if ($mejaBaru->id != $mejaLama->id) {
+            $mejaBaru->status_meja = 'Tidak Tersedia';
+            $mejaLama->status_meja = 'Tersedia';            
+        }
   
         $reservasi->id_customer = $update_data['id_customer'];     
         $reservasi->id_meja = $update_data['id_meja'];
@@ -113,8 +107,8 @@ class Reservasi_Controller extends Controller
         $reservasi->jadwal_kunjungan = $update_data['jadwal_kunjungan'];
  
         if($reservasi->save()){
-            // $mejaBaru->save();
-            // $mejaLama->save();
+            $mejaBaru->save();
+            $mejaLama->save();
             return response([
                 'message' => 'Ubah Reservasi Berhasil',
                 'data' => $reservasi,
@@ -129,7 +123,7 @@ class Reservasi_Controller extends Controller
 
     public function destroy($id){
         $reservasi = Reservasi::find($id);
-        // $meja = Meja::find($reservasi->id_meja);
+        $meja = Meja::find($reservasi->id_meja);
  
         if(is_null($reservasi)){
             return response([
@@ -139,10 +133,10 @@ class Reservasi_Controller extends Controller
         }
         
         $reservasi->status_hapus = 1;
-        // $meja->status_meja = 'Tersedia';
+        $meja->status_meja = 'Tersedia';
 
         if($reservasi->save()){
-            // $meja->save();
+            $meja->save();
             return response([
                 'message' => 'Hapus Reservasi Berhasil',
                 'data' => $reservasi,

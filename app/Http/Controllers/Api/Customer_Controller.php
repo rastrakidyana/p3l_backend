@@ -11,7 +11,7 @@ use App\Customer;
 class Customer_Controller extends Controller
 {
     public function index(){
-        $customers = Customer::all();
+        $customers = Customer::where('status_hapus', '=', 0)->orderBy('nama_customer', 'ASC')->get();;
 
         if(count($customers) > 0){
             return response([
@@ -46,12 +46,30 @@ class Customer_Controller extends Controller
         $store_data = $request->all();
         $validate = Validator::make($store_data, [
             'nama_customer' => 'required|max:50',
-            'telp_customer' => 'required|digits_between:10,12',
-            'email_customer' => 'required|email:rfc,dns',
+            // 'telp_customer' => 'digits_between:10,12',
+            // 'email_customer' => 'email:rfc,dns',
         ]);
 
         if($validate->fails())
             return response(['message'=> $validate->errors()],400);        
+        
+        $uniqueNama = Customer::where('status_hapus', '=', 0)->where('nama_customer', '=', $store_data['nama_customer'])->first();
+        $uniqueTelp = Customer::where('status_hapus', '=', 0)->where('telp_customer', '=', $store_data['telp_customer'])->first();
+        $uniqueEmail = Customer::where('status_hapus', '=', 0)->where('email_customer', '=', $store_data['email_customer'])->first();
+    
+        if ($uniqueNama != null || $uniqueTelp != null || $uniqueEmail != null) {
+            return response([
+                'message' => 'Nama Atau No. Telp Atau Email Sudah Ada',
+                'data' => null,
+                ],400);
+        }
+
+        if ($store_data['telp_customer'] == 'null') {
+            $store_data['telp_customer'] = null;
+        }
+        if ($store_data['email_customer'] == 'null') {
+            $store_data['email_customer'] = null;
+        }
         
         $store_data['status_hapus'] = 0;
 
@@ -75,12 +93,42 @@ class Customer_Controller extends Controller
         $update_data = $request->all();
         $validate = Validator::make($update_data, [
             'nama_customer' => 'required|max:50',
-            'telp_customer' => 'required|digits_between:10,12',
-            'email_customer' => 'required|email:rfc,dns', 
+            // 'telp_customer' => 'digits_between:10,12',
+            // 'email_customer' => 'email:rfc,dns', 
         ]);
  
         if($validate->fails())
              return response(['message' => $validate->errors()],400);
+
+        $uniqueNama = Customer::where('status_hapus', '=', 0)->where('nama_customer', '=', $update_data['nama_customer'])->first();
+        $uniqueTelp = Customer::where('status_hapus', '=', 0)->where('telp_customer', '=', $update_data['telp_customer'])->first();
+        $uniqueEmail = Customer::where('status_hapus', '=', 0)->where('email_customer', '=', $update_data['email_customer'])->first();
+                
+        if (($uniqueNama != null) || ($uniqueTelp != null) || ($uniqueEmail != null)) {
+            $count = 0;
+            if ($uniqueNama != null) {
+                if ($uniqueNama->id != $customer->id ) {
+                    $count++;
+                }                     
+            }
+            else if ($uniqueTelp != null) {
+                if ($uniqueTelp->id != $customer->id ) {
+                    $count++;
+                }                     
+            }
+            else if ($uniqueEmail != null) {
+                if ($uniqueEmail->id != $customer->id ) {
+                    $count++;
+                }                     
+            }
+
+            if ($count > 0) {
+                return response([
+                    'message' => 'Nama Atau No. Telp Atau Email Sudah Ada',
+                    'data' => null,
+                    ],400);
+            }                   
+        }     
   
         $customer->nama_customer = $update_data['nama_customer'];
         $customer->telp_customer = $update_data['telp_customer'];

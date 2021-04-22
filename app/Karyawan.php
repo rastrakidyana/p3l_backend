@@ -56,7 +56,7 @@ class Karyawan extends Authenticatable
     }
 
     public function jabatan(){
-        return $this->hasOne('App\Bahan');
+        return $this->hasOne('App\Jabatan', 'id_jabatan');
     }
 
     public function reservasis(){

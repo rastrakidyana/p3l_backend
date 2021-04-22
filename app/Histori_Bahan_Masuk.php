@@ -7,11 +7,11 @@ use Carbon\Carbon;
 
 class Histori_Bahan_Masuk extends Model
 {
-    protected $table = 'histori_bahan_masuk';
+    protected $table = 'histori__bahan__masuk';
 
     protected $fillable = [
         'id_bahan', 'jml_masuk', 'tgl_masuk',
-        'harga_bahan'
+        'harga_bahan', 'status_hapus'
     ];
 
     public function getCreatedAtAttribute(){

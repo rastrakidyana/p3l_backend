@@ -11,7 +11,7 @@ use App\Bahan;
 class Bahan_Controller extends Controller
 {
     public function index(){
-        $bahans = Bahan::all();
+        $bahans = Bahan::where('status_hapus', '=', 0)->orderBy('nama_bahan', 'ASC')->get();
 
         if(count($bahans) > 0){
             return response([
@@ -45,8 +45,7 @@ class Bahan_Controller extends Controller
     public function store(Request $request){
         $store_data = $request->all();
         $validate = Validator::make($store_data, [            
-            'nama_bahan' => 'required|max:30',
-            'stok_bahan' => 'required|numeric',
+            'nama_bahan' => 'required|max:30',            
             'unit_bahan' => 'required|max:20',
         ]);
 
@@ -54,6 +53,7 @@ class Bahan_Controller extends Controller
             return response(['message'=> $validate->errors()],400);        
         
         $store_data['status_hapus'] = 0;
+        $store_data['stok_bahan'] = 0;
 
         $bahan = Bahan::create($store_data);
         return response([
@@ -74,16 +74,14 @@ class Bahan_Controller extends Controller
  
         $update_data = $request->all();
         $validate = Validator::make($update_data, [
-            'nama_bahan' => 'required|max:30',
-            'stok_bahan' => 'required|numeric',
+            'nama_bahan' => 'required|max:30',            
             'unit_bahan' => 'required|max:20', 
         ]);
  
         if($validate->fails())
              return response(['message' => $validate->errors()],400);
   
-        $bahan->nama_bahan = $update_data['nama_bahan'];
-        $bahan->stok_bahan = $update_data['stok_bahan'];
+        $bahan->nama_bahan = $update_data['nama_bahan'];        
         $bahan->unit_bahan = $update_data['unit_bahan'];
  
         if($bahan->save()){

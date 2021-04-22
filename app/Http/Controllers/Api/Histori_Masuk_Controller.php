@@ -7,11 +7,19 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Validator;
 use App\Histori_Bahan_Masuk;
+use App\Bahan;
+use App\Menu;
 
 class Histori_Masuk_Controller extends Controller
 {
     public function index(){
-        $masuks = Histori_Bahan_Masuk::all();
+        $masuks = Histori_Bahan_Masuk::where('status_hapus', '=', 0)->get();
+
+        $masuks = Histori_Bahan_Masuk::join('bahan', 'histori__bahan__masuk.id_bahan', '=', 'bahan.id')
+            ->select('histori__bahan__masuk.id', 'histori__bahan__masuk.id_bahan', 'bahan.nama_bahan', 'bahan.unit_bahan',
+                'histori__bahan__masuk.jml_masuk', 'histori__bahan__masuk.tgl_masuk', 'histori__bahan__masuk.harga_bahan',                
+                'histori__bahan__masuk.status_hapus')->where('histori__bahan__masuk.status_hapus', '=', 0)
+            ->orderBy('histori__bahan__masuk.created_at', 'DESC')->get();
 
         if(count($masuks) > 0){
             return response([
@@ -52,10 +60,18 @@ class Histori_Masuk_Controller extends Controller
         ]);
 
         if($validate->fails())
-            return response(['message'=> $validate->errors()],400);        
-                
+            return response(['message'=> $validate->errors()],400);
+            
+        $bahan = Bahan::find($store_data['id_bahan']);
+        $menu = Menu::find($bahan->id_menu);
+
+        $bahan->stok_bahan = $bahan->stok_bahan + $store_data['jml_masuk'];
+        $menu->stok_menu = $bahan->stok_bahan / $menu->serving_size;
+        $store_data['status_hapus'] = 0;
 
         $masuk = Histori_Bahan_Masuk::create($store_data);
+        $bahan->save();
+        $menu->save();
         return response([
             'message' => 'Tambah Histori Bahan Masuk Berhasil',
             'data' => $masuk,
@@ -81,18 +97,40 @@ class Histori_Masuk_Controller extends Controller
         ]);
  
         if($validate->fails())
-             return response(['message' => $validate->errors()],400);
-  
-        $masuk->id_bahan = $update_data['id_bahan'];
+            return response(['message' => $validate->errors()],400);
+
+        $bahanBaru = Bahan::where('id', '=', $update_data['id_bahan'])->first();
+        $bahanLama = Bahan::where('id', '=', $masuk->id_bahan)->first();
+        $menuBaru = Menu::where('id', '=', $bahanBaru->id_menu)->first();
+        $menuLama = Menu::where('id', '=', $bahanLama->id_menu)->first();
+ 
+        if ($bahanBaru->id != $bahanLama->id) {
+            $bahanBaru->stok_bahan = $bahanBaru->stok_bahan + $update_data['jml_masuk'];
+            $bahanLama->stok_bahan = $bahanLama->stok_bahan - $masuk->jml_masuk;            
+        } else {
+            if ($masuk->jml_masuk != $update_data['jml_masuk']) {
+                $bahanLama->stok_bahan = $bahanLama->stok_bahan - $masuk->jml_masuk;
+                $bahanLama->stok_bahan = $bahanLama->stok_bahan + $update_data['jml_masuk'];                                
+            }
+        }
+
+        $masuk->id_bahan = $update_data['id_bahan'];        
         $masuk->jml_masuk = $update_data['jml_masuk'];
         $masuk->tgl_masuk = $update_data['tgl_masuk'];
         $masuk->harga_bahan = $update_data['harga_bahan'];
+        
+        $menuBaru->stok_menu = $bahanBaru->stok_bahan / $menuBaru->serving_size;
+        $menuLama->stok_menu = $bahanLama->stok_bahan / $menuLama->serving_size;
  
         if($masuk->save()){
-             return response([
-                 'message' => 'Ubah Histori Bahan Masuk Berhasil',
-                 'data' => $masuk,
-                 ],200);
+            $bahanBaru->save();
+            $bahanLama->save();
+            $menuBaru->save();
+            $menuLama->save();
+            return response([
+                'message' => 'Ubah Histori Bahan Masuk Berhasil',
+                'data' => $masuk,
+                ],200);
         }
  
         return response([
@@ -101,28 +139,28 @@ class Histori_Masuk_Controller extends Controller
             ],400);
     }
 
-    // public function destroy($id){
-    //     $masuk = Histori_Bahan_Masuk::find($id);
+    public function destroy($id){
+        $masuk = Histori_Bahan_Masuk::find($id);
  
-    //     if(is_null($masuk)){
-    //         return response([
-    //             'message' => 'Histori Bahan Masuk Tidak Ditemukan',
-    //             'data' => null
-    //         ],404);
-    //     }
+        if(is_null($masuk)){
+            return response([
+                'message' => 'Histori Bahan Masuk Tidak Ditemukan',
+                'data' => null
+            ],404);
+        }
         
-    //     $bahan->status_hapus = 1;
+        $masuk->status_hapus = 1;
 
-    //     if($bahan->save()){
-    //         return response([
-    //             'message' => 'Hapus Bahan Berhasil',
-    //             'data' => $bahan,
-    //             ],200);
-    //     }
+        if($masuk->save()){
+            return response([
+                'message' => 'Hapus Histori Bahan Masuk Berhasil',
+                'data' => $masuk,
+                ],200);
+        }
  
-    //     return response([
-    //         'message' => 'Hapus Bahan Gagal',
-    //         'data' => null,
-    //     ],400);
-    // }
+        return response([
+            'message' => 'Hapus Histori Bahan Masuk Gagal',
+            'data' => null,
+        ],400);
+    }
 }

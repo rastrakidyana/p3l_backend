@@ -6,12 +6,54 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Validator;
+use Carbon\Carbon;
 use App\Meja;
+use App\Reservasi;
 
 class Meja_Controller extends Controller
 {
+    // public function index(){
+    //     $mejas = Meja::where('status_hapus', '=', 0)->get();
+
+    //     if(count($mejas) > 0){
+    //         return response([
+    //             'message' => 'Tampil Semua Meja Berhasil',
+    //             'data' => $mejas
+    //         ],200);
+    //     }
+
+    //     return response([
+    //         'message' => 'Kosong',
+    //         'data' => null
+    //     ],404);
+    // }
+
     public function index(){
-        $mejas = Meja::all();
+        // $reservasis = Reservasi::where('status_hapus', '=', 0)->get();
+        $mejas = Meja::where('status_hapus', '=', 0)->get();
+
+        foreach ($mejas as $meja) {
+            $meja->status_meja = 'Tersedia';
+            $meja->save();
+        }        
+
+        $dt = Carbon::today()->toDateString();
+        $timeNow = Carbon::now()->toTimeString();
+        $reservasis = Reservasi::where('status_hapus', '=', 0)->where('tgl_reservasi', '=', $dt)->get();
+
+        foreach ($reservasis as $reservasi) {
+            if ($timeNow >= '11:00:00' && $timeNow <= '16:00:00' && $reservasi->jadwal_kunjungan == 'Lunch') {
+                $mejaTT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
+                $mejaTT->status_meja = 'Tidak Tersedia';
+                $mejaTT->save();
+            } else if ($timeNow >= '16:00:01' && $timeNow <= '21:00:00' && $reservasi->jadwal_kunjungan == 'Dinner') {
+                $mejaT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
+                $mejaT->status_meja = 'Tidak Tersedia';
+                $mejaT->save();
+            }
+        }
+
+        $mejas = Meja::where('status_hapus', '=', 0)->orderBy('no_meja', 'ASC')->get();
 
         if(count($mejas) > 0){
             return response([
@@ -49,7 +91,16 @@ class Meja_Controller extends Controller
         ]);
 
         if($validate->fails())
-            return response(['message'=> $validate->errors()],400);        
+            return response(['message'=> $validate->errors()],400);
+            
+        $unique = Meja::where('status_hapus', '=', 0)->where('no_meja', '=', $store_data['no_meja'])->first();
+        
+        if ($unique != null) {
+            return response([
+                'message' => 'Meja Sudah Ada',
+                'data' => null,
+                ],400);
+        }
 
         $store_data['status_meja'] = 'Tersedia';
         $store_data['status_hapus'] = 0;
@@ -73,15 +124,24 @@ class Meja_Controller extends Controller
  
         $update_data = $request->all();
         $validate = Validator::make($update_data, [
-            'no_meja' => 'required|numeric|',
-            'status_meja' => 'required',    
+            'no_meja' => 'required|numeric|',                
         ]);
  
         if($validate->fails())
              return response(['message' => $validate->errors()],400);
   
-        $meja->no_meja = $update_data['no_meja'];
-        $meja->status_meja = $update_data['status_meja'];
+        $unique = Meja::where('status_hapus', '=', 0)->where('no_meja', '=', $update_data['no_meja'])->first();
+        
+        if ($unique != null) {
+            if ($unique->id != $meja->id ) {
+                return response([
+                    'message' => 'Meja Sudah Ada',
+                    'data' => null,
+                    ],400);
+            }                     
+        }
+        
+        $meja->no_meja = $update_data['no_meja'];        
  
         if($meja->save()){
              return response([

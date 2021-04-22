@@ -29,6 +29,6 @@ class Menu extends Model
     }
 
     public function bahan(){
-        return $this->hasOne('App\Bahan');
+        return $this->hasOne('App\Bahan', 'id_bahan');
     }
 }
