@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Validator;
+use Carbon\Carbon;
 use App\Histori_Bahan_Masuk;
 use App\Bahan;
 use App\Menu;
@@ -13,12 +14,13 @@ use App\Menu;
 class Histori_Masuk_Controller extends Controller
 {
     public function index(){
-        $masuks = Histori_Bahan_Masuk::where('status_hapus', '=', 0)->get();
+        // $dt = Carbon::today()->toDateString();
+        // $ins = Histori_Bahan_Masuk::where('status_hapus', '!=', 1)->where('status_hapus', '!=', 1)->get();
 
         $masuks = Histori_Bahan_Masuk::join('bahan', 'histori__bahan__masuk.id_bahan', '=', 'bahan.id')
             ->select('histori__bahan__masuk.id', 'histori__bahan__masuk.id_bahan', 'bahan.nama_bahan', 'bahan.unit_bahan',
                 'histori__bahan__masuk.jml_masuk', 'histori__bahan__masuk.tgl_masuk', 'histori__bahan__masuk.harga_bahan',                
-                'histori__bahan__masuk.status_hapus')->where('histori__bahan__masuk.status_hapus', '=', 0)
+                'histori__bahan__masuk.status_hapus')->where('histori__bahan__masuk.status_hapus', '!=', 1)
             ->orderBy('histori__bahan__masuk.created_at', 'DESC')->get();
 
         if(count($masuks) > 0){
@@ -63,15 +65,19 @@ class Histori_Masuk_Controller extends Controller
             return response(['message'=> $validate->errors()],400);
             
         $bahan = Bahan::find($store_data['id_bahan']);
-        $menu = Menu::find($bahan->id_menu);
 
-        $bahan->stok_bahan = $bahan->stok_bahan + $store_data['jml_masuk'];
-        $menu->stok_menu = $bahan->stok_bahan / $menu->serving_size;
+        $bahan->stok_bahan = $bahan->stok_bahan + $store_data['jml_masuk'];  
+        
+        if ($bahan->id_menu != null) {
+            $menu = Menu::find($bahan->id_menu);
+            $menu->stok_menu = $bahan->stok_bahan / $menu->serving_size;
+            $menu->save();
+        }
+
         $store_data['status_hapus'] = 0;
 
         $masuk = Histori_Bahan_Masuk::create($store_data);
-        $bahan->save();
-        $menu->save();
+        $bahan->save();        
         return response([
             'message' => 'Tambah Histori Bahan Masuk Berhasil',
             'data' => $masuk,
@@ -106,7 +112,8 @@ class Histori_Masuk_Controller extends Controller
  
         if ($bahanBaru->id != $bahanLama->id) {
             $bahanBaru->stok_bahan = $bahanBaru->stok_bahan + $update_data['jml_masuk'];
-            $bahanLama->stok_bahan = $bahanLama->stok_bahan - $masuk->jml_masuk;            
+            $bahanLama->stok_bahan = $bahanLama->stok_bahan - $masuk->jml_masuk;
+            $bahanBaru->save();            
         } else {
             if ($masuk->jml_masuk != $update_data['jml_masuk']) {
                 $bahanLama->stok_bahan = $bahanLama->stok_bahan - $masuk->jml_masuk;
@@ -114,19 +121,23 @@ class Histori_Masuk_Controller extends Controller
             }
         }
 
+        $bahanLama->save();
         $masuk->id_bahan = $update_data['id_bahan'];        
         $masuk->jml_masuk = $update_data['jml_masuk'];
         $masuk->tgl_masuk = $update_data['tgl_masuk'];
         $masuk->harga_bahan = $update_data['harga_bahan'];
         
-        $menuBaru->stok_menu = $bahanBaru->stok_bahan / $menuBaru->serving_size;
-        $menuLama->stok_menu = $bahanLama->stok_bahan / $menuLama->serving_size;
- 
-        if($masuk->save()){
-            $bahanBaru->save();
-            $bahanLama->save();
-            $menuBaru->save();
+        if ($menuLama != null) {
+            $menuLama->stok_menu = $bahanLama->stok_bahan / $menuLama->serving_size;
             $menuLama->save();
+        }
+
+        if ($menuBaru != null) {
+            $menuBaru->stok_menu = $bahanBaru->stok_bahan / $menuBaru->serving_size;
+            $menuBaru->save();
+        }
+ 
+        if($masuk->save()){                       
             return response([
                 'message' => 'Ubah Histori Bahan Masuk Berhasil',
                 'data' => $masuk,
@@ -149,6 +160,16 @@ class Histori_Masuk_Controller extends Controller
             ],404);
         }
         
+        $bahan = Bahan::where('id', '=', $masuk->id_bahan)->first();
+        $menu = Menu::where('id', '=', $bahan->id_menu)->first();
+
+        $bahan->stok_bahan = $bahan->stok_bahan - $masuk->jml_masuk;
+        if ($menu != null) {
+            $menu->stok_menu = $bahan->stok_bahan / $menu->serving_size;
+            $menu->save();
+        }
+        $bahan->save();
+
         $masuk->status_hapus = 1;
 
         if($masuk->save()){

@@ -61,7 +61,7 @@ class Karyawan_Controller extends Controller
         ]);
 
         if($validate->fails())
-            return response(['message'=> $validate->errors()],400);
+            return response(['message'=> 'Nama Atau No. Telp Atau Email Sudah Ada'],400);
 
         $store_data['status_karyawan'] = 'Aktif';
         $store_data['password'] = bcrypt($request->password);
@@ -96,8 +96,9 @@ class Karyawan_Controller extends Controller
         if($validate->fails())
              return response(['message' => $validate->errors()],400);
   
-        if ($karyawan->tgl_gabung_karyawan == $karyawan->password) {
-            $karyawan->password = $update_data['tgl_gabung_karyawan'];
+        if (Hash::check($karyawan->tgl_gabung_karyawan, $karyawan->password)) {
+            
+            $karyawan->password = bcrypt($update_data['tgl_gabung_karyawan']);
         }
 
         $karyawan->id_jabatan = $update_data['id_jabatan'];

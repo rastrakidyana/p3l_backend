@@ -5,10 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 use Validator;
+use QrCode;
+use SimpleSoftwareIO\QrCode\Generator;
+use PDF;
+use Carbon\Carbon;
 use App\Reservasi;
 use App\Meja;
 use App\Customer;
+use App\Karyawan;
 use App\Transaksi;
 
 class Reservasi_Controller extends Controller
@@ -18,9 +24,9 @@ class Reservasi_Controller extends Controller
         $reservasis = Reservasi::join('meja', 'reservasi.id_meja', '=', 'meja.id')
             ->join('customer', 'reservasi.id_customer', '=', 'customer.id')
             ->join('karyawan', 'reservasi.id_karyawan', '=', 'karyawan.id')
-            // ->join('transaksi', 'reservasi.id_transaksi', '=', 'transaksi.id')
+            ->leftjoin('transaksi', 'reservasi.id_transaksi', '=', 'transaksi.id')
             ->select('reservasi.id', 'reservasi.id_customer', 'customer.nama_customer', 'reservasi.id_meja', 'meja.no_meja',
-                'reservasi.id_karyawan', 'karyawan.nama_karyawan', 'reservasi.id_transaksi',
+                'reservasi.id_karyawan', 'karyawan.nama_karyawan', 'reservasi.id_transaksi', 'transaksi.no_transaksi', 'transaksi.status_transaksi',
                 'reservasi.tgl_reservasi', 'reservasi.jadwal_kunjungan', 'reservasi.kode_qr', 'reservasi.status_hapus')
             ->where('reservasi.status_hapus', '=', 0)->orderBy('reservasi.created_at', 'DESC')->get();
 
@@ -66,7 +72,7 @@ class Reservasi_Controller extends Controller
         if($validate->fails())
             return response(['message'=> $validate->errors()],400);        
                 
-        $store_data['kode_qr'] = 0;    
+        $store_data['kode_qr'] = Str::random(10);    
         $store_data['status_hapus'] = 0;
 
         $reservasi = Reservasi::create($store_data);        
@@ -96,15 +102,7 @@ class Reservasi_Controller extends Controller
         ]);
  
         if($validate->fails())
-            return response(['message' => $validate->errors()],400);
-
-        // $mejaBaru = Meja::where('id', '=', $update_data['id_meja'])->first();
-        // $mejaLama = Meja::where('id', '=', $reservasi->id_meja)->first();
-
-        // if ($mejaBaru->id != $mejaLama->id) {
-        //     $mejaBaru->status_meja = 'Tidak Tersedia';
-        //     $mejaLama->status_meja = 'Tersedia';            
-        // }
+            return response(['message' => $validate->errors()],400);        
   
         $reservasi->id_customer = $update_data['id_customer'];     
         $reservasi->id_meja = $update_data['id_meja'];
@@ -113,8 +111,6 @@ class Reservasi_Controller extends Controller
         $reservasi->jadwal_kunjungan = $update_data['jadwal_kunjungan'];
  
         if($reservasi->save()){
-            // $mejaBaru->save();
-            // $mejaLama->save();
             return response([
                 'message' => 'Ubah Reservasi Berhasil',
                 'data' => $reservasi,
@@ -128,8 +124,7 @@ class Reservasi_Controller extends Controller
     }
 
     public function destroy($id){
-        $reservasi = Reservasi::find($id);
-        // $meja = Meja::find($reservasi->id_meja);
+        $reservasi = Reservasi::find($id);        
  
         if(is_null($reservasi)){
             return response([
@@ -138,11 +133,9 @@ class Reservasi_Controller extends Controller
             ],404);
         }
         
-        $reservasi->status_hapus = 1;
-        // $meja->status_meja = 'Tersedia';
+        $reservasi->status_hapus = 1;        
 
         if($reservasi->save()){
-            // $meja->save();
             return response([
                 'message' => 'Hapus Reservasi Berhasil',
                 'data' => $reservasi,
@@ -154,4 +147,63 @@ class Reservasi_Controller extends Controller
             'data' => null,
         ],400);
     }
+
+    public function generateQRCode($id) {
+        $reservasi = Reservasi::find($id);
+        // $tgl = Carbon::parse($reservasi->tgl_reservasi)->format('dmy');
+        // $nomor = Transaksi::join('reservasi', 'transaksi.id_reservasi', '=', 'reservasi.id')
+        // ->select('transaksi.id', 'transaksi.no_transaksi')
+        // ->where('reservasi.tgl_reservasi', '=', $reservasi->tgl_reservasi)->get();
+
+        // if ($nomor == '[]') {
+        //     $nomor = 2;
+        // }
+        $qrcode = base64_encode(QrCode::format('svg')->size(800)->errorCorrection('H')->generate($reservasi->kode_qr));
+
+        if(!is_null($reservasi)){
+            return view('qrcode.qr', compact('qrcode'));
+            // return response([
+            //     'message' => $tgl,
+            //     'data' => null
+            // ],404);
+        }
+
+        return response([
+            'message' => 'Tampil QR Code gagal',
+            'data' => null
+        ],404);
+    }
+
+    public function pdf($id) {
+        $reservasi = Reservasi::find($id);        
+        $customer = Customer::find($reservasi->id_customer);
+        $karyawan = Karyawan::find($reservasi->id_karyawan);
+        $qrcode = base64_encode(QrCode::format('svg')->size(400)->errorCorrection('H')->generate($reservasi->kode_qr));
+        $orang = $karyawan->nama_karyawan;
+        $date = Carbon::parse($reservasi->tgl_reservasi)->format('M d');
+        $thn = Carbon::parse($reservasi->tgl_reservasi)->format('Y');
+        $jam = Carbon::now()->toTimeString();
+        $pdf = PDF::loadView('qrcode.qr', compact('qrcode', 'orang', 'date', 'thn', 'jam'));
+        
+        return $pdf->stream($reservasi->tgl_reservasi.'_'.$customer->nama_customer.'.pdf');        
+    }
+    
+    public function scanQRCode($kode) {
+        $reservasi = Reservasi::where('kode_qr', '=', $kode)->first();
+        $transaksi = Transaksi::where('id_reservasi', '=', $reservasi->id)
+                                    ->where('status_transaksi', '=', 'Belum Bayar')->first();
+        
+        if(!is_null($transaksi)){
+            return response([
+                'message' => 'Scan QR Code Berhasil',
+                'data' => $transaksi
+            ],200);
+        }
+
+        return response([
+            'message' => 'Scan QR Code gagal',
+            'data' => null
+        ],200);
+    }
+
 }

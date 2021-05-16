@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Validator;
 use App\Bahan;
+use App\Menu;
 
 class Bahan_Controller extends Controller
 {
@@ -50,7 +51,16 @@ class Bahan_Controller extends Controller
         ]);
 
         if($validate->fails())
-            return response(['message'=> $validate->errors()],400);        
+            return response(['message'=> $validate->errors()],400);
+            
+        $unique = Bahan::where('status_hapus', '=', 0)->where('nama_bahan', '=', $store_data['nama_bahan'])->first();
+        
+        if ($unique != null) {
+            return response([
+                'message' => 'Bahan Sudah Ada',
+                'data' => null,
+                ],400);
+        }
         
         $store_data['status_hapus'] = 0;
         $store_data['stok_bahan'] = 0;
@@ -80,6 +90,17 @@ class Bahan_Controller extends Controller
  
         if($validate->fails())
              return response(['message' => $validate->errors()],400);
+
+        $unique = Bahan::where('status_hapus', '=', 0)->where('nama_bahan', '=', $update_data['nama_bahan'])->first();
+        
+        if ($unique != null) {
+            if ($unique->id != $bahan->id ) {
+                return response([
+                    'message' => 'Bahan Sudah Ada',
+                    'data' => null,
+                    ],400);
+            }                     
+        }
   
         $bahan->nama_bahan = $update_data['nama_bahan'];        
         $bahan->unit_bahan = $update_data['unit_bahan'];
@@ -107,9 +128,15 @@ class Bahan_Controller extends Controller
             ],404);
         }
         
+        if ($bahan->id_menu != null) {
+            $menu = Menu::find($bahan->id_menu);
+            $menu->status_hapus = 1;
+            $menu->save();
+        }
+
         $bahan->status_hapus = 1;
 
-        if($bahan->save()){
+        if($bahan->save()){            
             return response([
                 'message' => 'Hapus Bahan Berhasil',
                 'data' => $bahan,

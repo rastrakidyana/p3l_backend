@@ -33,4 +33,8 @@ class Bahan extends Model
     public function histori_masuks(){
         return $this->hasMany('App\Histori_Bahan_Masuk');
     }
+
+    public function histori_keluars(){
+        return $this->hasMany('App\Histori_Bahan_Keluar');
+    }
 }

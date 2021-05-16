@@ -52,7 +52,7 @@ class Menu_Controller extends Controller
         $validate = Validator::make($store_data, [            
             'id_bahan' => 'required',
             'nama_menu' => 'required|max:30',
-            'deskripsi_menu' => 'required|max:50',
+            'deskripsi_menu' => 'required|max:255',
             'unit_menu' => 'required|max:20',
             'harga_menu' => 'required|numeric',
             'tipe_menu' => 'required|max:20',            
@@ -64,11 +64,20 @@ class Menu_Controller extends Controller
             return response(['message'=> $validate->errors()],400);
         
         $bahan = Bahan::find($store_data['id_bahan']);
-        if(is_null($bahan)){
+        // if(is_null($bahan)){
+        //     return response([
+        //         'message' => 'Bahan Tidak Ditemukan',
+        //         'data' => null
+        //     ],404);
+        // }
+
+        $unique = Menu::where('status_hapus', '=', 0)->where('nama_menu', '=', $store_data['nama_menu'])->first();
+        
+        if ($unique != null) {
             return response([
-                'message' => 'Bahan Tidak Ditemukan',
-                'data' => null
-            ],404);
+                'message' => 'Menu Sudah Ada',
+                'data' => null,
+                ],400);
         }
 
         $store_data['stok_menu'] = $bahan->stok_bahan / $store_data['serving_size'] ;
@@ -97,7 +106,7 @@ class Menu_Controller extends Controller
         $validate = Validator::make($update_data, [
             'id_bahan' => 'required',
             'nama_menu' => 'required|max:30',
-            'deskripsi_menu' => 'required|max:50',
+            'deskripsi_menu' => 'required|max:255',
             'unit_menu' => 'required|max:20',
             'harga_menu' => 'required|numeric',
             'tipe_menu' => 'required|max:20',            
@@ -109,11 +118,22 @@ class Menu_Controller extends Controller
              return response(['message' => $validate->errors()],400);
 
         $bahan = Bahan::find($update_data['id_bahan']);
-        if(is_null($bahan)){
-            return response([
-                'message' => 'Bahan Tidak Ditemukan',
-                'data' => null
-            ],404);
+        // if(is_null($bahan)){
+        //     return response([
+        //         'message' => 'Bahan Tidak Ditemukan',
+        //         'data' => null
+        //     ],404);
+        // }
+
+        $unique = Menu::where('status_hapus', '=', 0)->where('nama_menu', '=', $update_data['nama_menu'])->first();
+        
+        if ($unique != null) {
+            if ($unique->id != $menu->id ) {
+                return response([
+                    'message' => 'Menu Sudah Ada',
+                    'data' => null,
+                    ],400);
+            }                     
         }
   
         $menu->id_bahan = $update_data['id_bahan'];    
@@ -141,7 +161,7 @@ class Menu_Controller extends Controller
     }
 
     public function destroy($id){
-        $menu = Menu::find($id);
+        $menu = Menu::find($id);        
  
         if(is_null($menu)){
             return response([
@@ -150,9 +170,15 @@ class Menu_Controller extends Controller
             ],404);
         }
         
-        $menu->status_hapus = 1;
+        if ($menu->id_bahan != null) {
+            $bahan = Bahan::find($menu->id_bahan);
+            $bahan->status_hapus = 1;
+            $bahan->save();
+        }
+        
+        $menu->status_hapus = 1;        
 
-        if($menu->save()){
+        if($menu->save()){            
             return response([
                 'message' => 'Hapus Menu Berhasil',
                 'data' => $menu,

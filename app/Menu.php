@@ -31,4 +31,8 @@ class Menu extends Model
     public function bahan(){
         return $this->hasOne('App\Bahan', 'id_bahan');
     }
+
+    public function pesanans(){
+        return $this->belongsToMany('App\Pesanan');
+    }
 }

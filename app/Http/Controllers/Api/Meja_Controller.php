@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Validator;
 use Carbon\Carbon;
+use App\Transaksi;
 use App\Meja;
 use App\Reservasi;
 
@@ -39,17 +40,32 @@ class Meja_Controller extends Controller
 
         $dt = Carbon::today()->toDateString();
         $timeNow = Carbon::now()->toTimeString();
+        // $timeNow = '13:00:00';
         $reservasis = Reservasi::where('status_hapus', '=', 0)->where('tgl_reservasi', '=', $dt)->get();
 
         foreach ($reservasis as $reservasi) {
-            if ($timeNow >= '11:00:00' && $timeNow <= '16:00:00' && $reservasi->jadwal_kunjungan == 'Lunch') {
-                $mejaTT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
-                $mejaTT->status_meja = 'Tidak Tersedia';
-                $mejaTT->save();
-            } else if ($timeNow >= '16:00:01' && $timeNow <= '21:00:00' && $reservasi->jadwal_kunjungan == 'Dinner') {
-                $mejaT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
-                $mejaT->status_meja = 'Tidak Tersedia';
-                $mejaT->save();
+            if ($timeNow >= '09:00:00' && $timeNow <= '16:00:00' && $reservasi->jadwal_kunjungan == 'Lunch') {
+                $transaksi = Transaksi::where('id', '=', $reservasi->id_transaksi)->first();
+                if ($transaksi == null) {
+                    $mejaTT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
+                    $mejaTT->status_meja = 'Tidak Tersedia';
+                    $mejaTT->save();   
+                } else if ($transaksi->status_transaksi == 'Belum Bayar') {
+                    $mejaTT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
+                    $mejaTT->status_meja = 'Tidak Tersedia';
+                    $mejaTT->save();  
+                }               
+            } else if ($timeNow >= '16:00:01' && $timeNow <= '20:00:00' && $reservasi->jadwal_kunjungan == 'Dinner') {
+                $transaksi = Transaksi::where('id', '=', $reservasi->id_transaksi)->first();
+                if ($transaksi == null) {
+                    $mejaT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
+                    $mejaT->status_meja = 'Tidak Tersedia';
+                    $mejaT->save();                    
+                } else if ($transaksi->status_transaksi == 'Belum Bayar') {
+                    $mejaT = Meja::where('status_hapus', '=', 0)->where('id', '=', $reservasi->id_meja)->first();
+                    $mejaT->status_meja = 'Tidak Tersedia';
+                    $mejaT->save();  
+                }
             }
         }
 

@@ -38,4 +38,8 @@ class Reservasi extends Model
     public function meja(){
         return $this->hasOne('App\Meja');
     }
+
+    public function transaksi(){
+        return $this->hasOne('App\Transaksi');
+    }
 }

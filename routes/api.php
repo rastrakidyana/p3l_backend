@@ -50,6 +50,27 @@ Route::group(['middleware' => 'auth:api'],function(){
     Route::post('reservasi', 'Api\Reservasi_Controller@store');
     Route::put('reservasi/{id}', 'Api\Reservasi_Controller@update');
     Route::get('reservasi_hapus/{id}', 'Api\Reservasi_Controller@destroy');
+    Route::get('reservasi_pdf/{id}', 'Api\Reservasi_Controller@pdf');
+    
+    
+    Route::get('transaksi', 'Api\Transaksi_Controller@index');
+    Route::get('transaksi/{id}', 'Api\Transaksi_Controller@show');
+    Route::get('transaksi_store/{id}', 'Api\Transaksi_Controller@store');
+    Route::put('transaksi_update/{id}', 'Api\Transaksi_Controller@update');
+
+    Route::get('kartu', 'Api\Kartu_Controller@index');
+    Route::get('kartu_tipe/{tipe}', 'Api\Kartu_Controller@indexTipe');
+    Route::get('kartu/{id}', 'Api\Transaksi_Controller@show');
+    Route::post('kartu', 'Api\Kartu_Controller@store');
+    Route::get('kartu_cek/{no}', 'Api\Kartu_Controller@cekKartu');
+
+    Route::get('pesanan', 'Api\Pesanan_Controller@index');
+    Route::get('pesanan/{id}', 'Api\Pesanan_Controller@show');
+    Route::post('pesanan', 'Api\Pesanan_Controller@store');
+    Route::put('pesanan/{id}', 'Api\Pesanan_Controller@update');
+    Route::get('pesanan_transaksi/{id}', 'Api\Pesanan_Controller@indexOneTransaksi');
+    Route::get('pesanan_subtotal/{id}', 'Api\Pesanan_Controller@sumSubTotal');
+    Route::get('pesanan_grup/{id}', 'Api\Pesanan_Controller@grup');
 
     Route::get('bahan', 'Api\Bahan_Controller@index');
     Route::get('bahan/{id}', 'Api\Bahan_Controller@show');
@@ -69,5 +90,24 @@ Route::group(['middleware' => 'auth:api'],function(){
     Route::put('histori_masuk/{id}', 'Api\Histori_Masuk_Controller@update');
     Route::get('histori_masuk_hapus/{id}', 'Api\Histori_Masuk_Controller@destroy');
 
+    Route::get('histori_keluar', 'Api\Histori_Keluar_Controller@index');
+    Route::get('histori_keluar/{id}', 'Api\Histori_Keluar_Controller@show');
+    Route::get('histori_keluar_store/{id}', 'Api\Histori_Keluar_Controller@store');
+    Route::post('histori_keluar', 'Api\Histori_Keluar_Controller@tambah');
+
     Route::get('logout','Api\Karyawan_Controller@logout');
 });
+
+Route::get('menu_mobile', 'Api\Menu_Controller@index');
+Route::get('menu_mobile/{id}', 'Api\Menu_Controller@show');
+
+// Route::get('pesanan_mobile/{id}', 'Api\Pesanan_Controller@show');
+Route::post('pesanan_mobile', 'Api\Pesanan_Controller@store');
+Route::get('pesanan_mobile/{id}', 'Api\Pesanan_Controller@indexOneTransaksi');
+Route::get('pesanan_subtotal_mobile/{id}', 'Api\Pesanan_Controller@sumSubTotal');
+
+Route::get('transaksi_mobile/{id}', 'Api\Transaksi_Controller@show');
+
+Route::get('reservasi_scan/{kode}', 'Api\Reservasi_Controller@scanQRCode');
+
+Route::get('reservasi_qrcode/{id}', 'Api\Reservasi_Controller@generateQRCode');
