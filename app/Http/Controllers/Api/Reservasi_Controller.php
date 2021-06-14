@@ -185,7 +185,7 @@ class Reservasi_Controller extends Controller
         $jam = Carbon::now()->toTimeString();
         $pdf = PDF::loadView('qrcode.qr', compact('qrcode', 'orang', 'date', 'thn', 'jam'));
         
-        return $pdf->stream($reservasi->tgl_reservasi.'_'.$customer->nama_customer.'.pdf');        
+        return $pdf->download($reservasi->tgl_reservasi.'_'.$customer->nama_customer.'.pdf');        
     }
     
     public function scanQRCode($kode) {

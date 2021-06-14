@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Validator;
+use Carbon\Carbon;
 use App\Menu;
 use App\Bahan;
+use App\Pesanan;
 
 class Menu_Controller extends Controller
 {
@@ -170,6 +173,13 @@ class Menu_Controller extends Controller
             ],404);
         }
         
+        if ($menu->stok_menu != 0) {
+            return response([
+                'message' => 'Menu harus kosong',
+                'data' => null
+            ],404);
+        }
+
         if ($menu->id_bahan != null) {
             $bahan = Bahan::find($menu->id_bahan);
             $bahan->status_hapus = 1;
@@ -189,5 +199,139 @@ class Menu_Controller extends Controller
             'message' => 'Hapus Menu Gagal',
             'data' => null,
         ],400);
+    }
+
+    public function laporanPenjualanOne($dt){
+
+        $menus = Menu::where('menu.status_hapus', '=', 0)->get();
+        $size = $menus->count();
+        $Shari = Carbon::parse($dt)->daysInMonth;
+        // $Shari = Carbon::parse($dt)->daysInYear;
+        $hari = (int)$Shari;
+        $thn = Carbon::parse($dt)->format('Y');
+        $bln = Carbon::parse($dt)->format('m');
+
+        for ($i=1; $i <= $size; $i++) { 
+            
+            $total[$i] = 0;
+            $item = [];
+            $num[] = 0;
+            
+            for ($j=1; $j <= $hari; $j++) {
+                if ($j >= 10) {
+                    $date = $thn.'-'.$bln.'-'.$j;
+                } else {
+                    $date = $thn.'-'.$bln.'-0'.$j;
+                }
+                                
+                $item[$j] = DB::table('pesanan')->join('menu', 'pesanan.id_menu', '=', 'menu.id')
+                    ->selectRaw('ifnull(sum(pesanan.jml_pesanan), 0) as perHari')
+                    ->where('menu.nama_menu', '=', $menus[$i-1]->nama_menu)
+                    ->where('menu.status_hapus', '=', 0)                    
+                    ->whereDate('pesanan.created_at', '=', $date)
+                    ->first();
+
+                $total[$i] = $total[$i] + $item[$j]->perHari; 
+            }  
+            
+            $max = max($item);
+
+            if ($menus[$i-1]->tipe_menu == 'Makanan Utama') {
+                $num[0] =  $num[0] + 1;
+                $no = $num[0];
+            } else if ($menus[$i-1]->tipe_menu == 'Minuman') {
+                $num[1] =  $num[1] + 1;
+                $no = $num[1];
+            } else {
+                $num[2] =  $num[2] + 1;
+                $no = $num[2];
+            }
+
+            $laporan[$i] = array( 
+                "no" => $no,               
+                "item_menu" => $menus[$i-1]->nama_menu,
+                "unit" => $menus[$i-1]->unit_menu,
+                "penjualan_harian_tertinggi" => $max->perHari,                
+                "total_penjualan" => $total[$i],
+                "tipe" => $menus[$i-1]->tipe_menu
+            );            
+        }
+        
+        return response([
+            'message' => 'Tampil laporan penjualan item menu berhasil',
+            'data' => $laporan,
+            ],200);       
+    }
+
+    public function laporanPenjualanAll($dt){
+
+        $menus = Menu::where('menu.status_hapus', '=', 0)->get();
+        $size = $menus->count();
+                                        
+        for ($i=1; $i <= $size; $i++) {
+            
+            $total[$i] = 0;
+            $item = [];
+            $max = [];
+            $num[] = 0;
+
+            for ($m=1; $m <= 12; $m++) {                
+
+                $thn = Carbon::parse($dt)->format('Y');
+                if ($m >= 10) {
+                    $date = $thn.'-'.$m;
+                } else {
+                    $date = $thn.'-0'.$m;
+                }
+                $Shari = Carbon::parse($date)->daysInMonth;
+                $hari = (int)$Shari;
+
+                for ($j=1; $j <= $hari; $j++) {
+                    if ($j >= 10) {
+                        $tgl = $date.'-'.$j;
+                    } else {
+                        $tgl = $date.'-0'.$j;
+                    }
+                                    
+                    $item[$j] = DB::table('pesanan')->join('menu', 'pesanan.id_menu', '=', 'menu.id')
+                        ->selectRaw('ifnull(sum(pesanan.jml_pesanan), 0) as perHari')
+                        ->where('menu.nama_menu', '=', $menus[$i-1]->nama_menu)
+                        ->where('menu.status_hapus', '=', 0)                    
+                        ->whereDate('pesanan.created_at', '=', $tgl)
+                        ->first();
+    
+                    $total[$i] = $total[$i] + $item[$j]->perHari; 
+                }                
+
+                $max[$m] = max($item);               
+            }
+
+            $tinggi = max($max);
+
+            if ($menus[$i-1]->tipe_menu == 'Makanan Utama') {
+                $num[0] = $num[0] + 1;
+                $no = $num[0];
+            } else if ($menus[$i-1]->tipe_menu == 'Minuman') {
+                $num[1] = $num[1] + 1;
+                $no = $num[1];
+            } else {
+                $num[2] = $num[2] + 1;
+                $no = $num[2];
+            }
+
+            $laporan[$i] = array( 
+                "no" => $no,               
+                "item_menu" => $menus[$i-1]->nama_menu,
+                "unit" => $menus[$i-1]->unit_menu,
+                "penjualan_harian_tertinggi" => $tinggi->perHari,                
+                "total_penjualan" => $total[$i],
+                "tipe" => $menus[$i-1]->tipe_menu
+            );  
+        }
+        
+        return response([
+            'message' => 'Tampil laporan penjualan item menu berhasil',
+            'data' => $laporan,
+            ],200);       
     }
 }

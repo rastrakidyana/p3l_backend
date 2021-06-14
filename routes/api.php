@@ -70,7 +70,6 @@ Route::group(['middleware' => 'auth:api'],function(){
     Route::put('pesanan/{id}', 'Api\Pesanan_Controller@update');
     Route::get('pesanan_transaksi/{id}', 'Api\Pesanan_Controller@indexOneTransaksi');
     Route::get('pesanan_subtotal/{id}', 'Api\Pesanan_Controller@sumSubTotal');
-    Route::get('pesanan_grup/{id}', 'Api\Pesanan_Controller@grup');
 
     Route::get('bahan', 'Api\Bahan_Controller@index');
     Route::get('bahan/{id}', 'Api\Bahan_Controller@show');
@@ -94,6 +93,15 @@ Route::group(['middleware' => 'auth:api'],function(){
     Route::get('histori_keluar/{id}', 'Api\Histori_Keluar_Controller@show');
     Route::get('histori_keluar_store/{id}', 'Api\Histori_Keluar_Controller@store');
     Route::post('histori_keluar', 'Api\Histori_Keluar_Controller@tambah');
+    Route::get('histori_terbuang', 'Api\Histori_Keluar_Controller@waste');
+
+    Route::get('laporan_pengeluaran_bulanan/{year}', 'Api\Histori_Masuk_Controller@laporanPengeluaranBln');
+    Route::get('laporan_pengeluaran_tahunan/{yearF}_{yearL}', 'Api\Histori_Masuk_Controller@laporanPengeluaranThn');
+    Route::get('laporan_pendapatan_bulanan/{year}', 'Api\Transaksi_Controller@laporanPendapatanBln');
+    Route::get('laporan_pendapatan_tahunan/{yearF}_{yearL}', 'Api\Transaksi_Controller@laporanPendapatanThn');
+    Route::get('laporan_penjualan_one/{dt}', 'Api\Menu_Controller@laporanPenjualanOne');
+    Route::get('laporan_penjualan_all/{dt}', 'Api\Menu_Controller@laporanPenjualanAll');
+    Route::get('laporan_bahan_custom/{yearF}_{yearL}', 'Api\Bahan_Controller@laporanBahanCustom');
 
     Route::get('logout','Api\Karyawan_Controller@logout');
 });
@@ -111,3 +119,7 @@ Route::get('transaksi_mobile/{id}', 'Api\Transaksi_Controller@show');
 Route::get('reservasi_scan/{kode}', 'Api\Reservasi_Controller@scanQRCode');
 
 Route::get('reservasi_qrcode/{id}', 'Api\Reservasi_Controller@generateQRCode');
+
+// Route::get('transaksi_struk', 'Api\Transaksi_Controller@struk');
+
+// Route::get('reservasi_pdf/{id}', 'Api\Reservasi_Controller@pdf');

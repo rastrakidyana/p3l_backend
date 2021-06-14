@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Validator;
@@ -43,6 +44,13 @@ class Pesanan_Controller extends Controller
             ->where('pesanan.id_transaksi', '=', $id)
             ->orderBy('pesanan.created_at', 'ASC')->get();
 
+        // $pesanans = DB::table('pesanan')
+        //                 ->join('menu', 'pesanan.id_menu', '=', 'menu.id')
+        //                 ->select(DB::raw('pesanan.id, pesanan.id_transaksi, pesanan.id_menu, menu.nama_menu, menu.unit_menu,
+        //                     pesanan.jml_pesanan, pesanan.total_pesanan, pesanan.status_pesanan, count(pesanan.id) as qty'))
+        //                 ->where('pesanan.id_transaksi', '=', $id)                                                
+        //                 ->orderBy('pesanan.created_at', 'ASC')->get();   
+
         if(count($pesanans) > 0){
             $transaksi = Transaksi::find($id);
             $jumlah = 0;
@@ -58,26 +66,6 @@ class Pesanan_Controller extends Controller
                 'data' => $pesanans
             ],200);
         }
-
-        return response([
-            'message' => 'Kosong',
-            'data' => null
-        ],404);
-    }
-
-    public function grup($id){
-        $pesanans = Pesanan::join('menu', 'pesanan.id_menu', '=', 'menu.id')                        
-            ->selectRaw('pesanan.id', 'pesanan.id_transaksi', 'pesanan.id_menu', 'menu.nama_menu', 'menu.unit_menu',
-                'SUM(pesanan.jml_pesanan) as jumlah', 'SUM(pesanan.total_pesanan) as total')
-            ->where('pesanan.id_transaksi', '=', $id)
-            ->groupBy('menu.nama_menu')
-            ->orderBy('pesanan.created_at', 'ASC')->get();
-
-        
-            return response([
-                'message' => 'Tampil Semua Pesanan Berhasil',
-                'data' => $pesanans
-            ],200);
 
         return response([
             'message' => 'Kosong',

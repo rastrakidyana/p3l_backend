@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Validator;
 use Carbon\Carbon;
@@ -184,4 +185,144 @@ class Histori_Masuk_Controller extends Controller
             'data' => null,
         ],400);
     }
+
+    public function laporanPengeluaranBln($year){
+        if($year < 2020){            
+            return response([
+                'message' => 'Restoran mulai beroperasi 2020',
+                'data' => null,
+            ],400);
+        }
+
+        $months = array(
+            'Januari',
+            'Februari',
+            'Maret',
+            'April',
+            'Mei',
+            'Juni',
+            'Juli ',
+            'Agustus',
+            'September',
+            'Oktober',
+            'November',
+            'Desember',
+        );
+
+
+        for ($bln=1; $bln <= 12; $bln++) { 
+            $makananU[$bln] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'bahan.id', '=', 'menu.id_bahan')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.harga_bahan), 0) as makananUBln')
+                ->where('menu.tipe_menu', '=', 'Makanan Utama')
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->whereMonth('histori__bahan__masuk.tgl_masuk', '=', $bln)
+                ->whereYear('histori__bahan__masuk.tgl_masuk', '=', $year)
+                ->first();
+
+            $sidedish[$bln] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'bahan.id', '=', 'menu.id_bahan')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.harga_bahan), 0) as sidedishBln')
+                ->where('menu.tipe_menu', '=', 'Sidedish')
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->whereMonth('histori__bahan__masuk.tgl_masuk', '=', $bln)
+                ->whereYear('histori__bahan__masuk.tgl_masuk', '=', $year)
+                ->first();    
+
+            $minuman[$bln] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'bahan.id', '=', 'menu.id_bahan')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.harga_bahan), 0) as minumanBln')
+                ->where('menu.tipe_menu', '=', 'Minuman')
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->whereMonth('histori__bahan__masuk.tgl_masuk', '=', $bln)
+                ->whereYear('histori__bahan__masuk.tgl_masuk', '=', $year)
+                ->first();
+            
+            $total_pengeluaran[$bln] = $makananU[$bln]->makananUBln + $sidedish[$bln]->sidedishBln + $minuman[$bln]->minumanBln;
+
+            $laporan[$bln] = array( 
+                "no" => $bln,               
+                "bulan" => $months[$bln-1],
+                "makanan" => $makananU[$bln]->makananUBln,
+                "sidedish" => $sidedish[$bln]->sidedishBln,
+                "minuman" => $minuman[$bln]->minumanBln,
+                "total_pengeluaran" => $total_pengeluaran[$bln]
+            );
+        }
+        
+        return response([
+            'message' => 'Tampil laporan pengeluaran bulanan berhasil',
+            'data' => $laporan,
+            ],200);       
+    }
+
+    public function laporanPengeluaranThn($yearF, $yearL){
+        if($yearL < $yearF){            
+            return response([
+                'message' => 'Inputan salah',
+                'data' => null,
+            ],400);
+        }
+
+        $range= ($yearL - $yearF) + 1;
+        $thn = $yearF;
+
+        for ($i=1; $i <= $range; $i++) { 
+            $makananU[$i] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'bahan.id', '=', 'menu.id_bahan')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.harga_bahan), 0) as makananUThn')
+                ->where('menu.tipe_menu', '=', 'Makanan Utama')
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)                
+                ->whereYear('histori__bahan__masuk.tgl_masuk', '=', $thn)
+                ->first();
+
+            $sidedish[$i] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'bahan.id', '=', 'menu.id_bahan')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.harga_bahan), 0) as sidedishThn')
+                ->where('menu.tipe_menu', '=', 'Sidedish')
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)                
+                ->whereYear('histori__bahan__masuk.tgl_masuk', '=', $thn)
+                ->first();    
+
+            $minuman[$i] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'bahan.id', '=', 'menu.id_bahan')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.harga_bahan), 0) as minumanThn')
+                ->where('menu.tipe_menu', '=', 'Minuman')
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)                
+                ->whereYear('histori__bahan__masuk.tgl_masuk', '=', $thn)
+                ->first();
+            
+            $total_pengeluaran[$i] = $makananU[$i]->makananUThn + $sidedish[$i]->sidedishThn + $minuman[$i]->minumanThn;
+
+            $laporan[$i] = array( 
+                "no" => $i,               
+                "tahun" => $thn,
+                "makanan" => $makananU[$i]->makananUThn,
+                "sidedish" => $sidedish[$i]->sidedishThn,
+                "minuman" => $minuman[$i]->minumanThn,
+                "total_pengeluaran" => $total_pengeluaran[$i]
+            );
+
+            $thn = $thn + 1;
+        }
+        
+        return response([
+            'message' => 'Tampil laporan pengeluaran tahunan berhasil',
+            'data' => $laporan,
+            ],200);       
+    }
+
+
 }

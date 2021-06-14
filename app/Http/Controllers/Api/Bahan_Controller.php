@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Validator;
+use Carbon\Carbon;
 use App\Bahan;
 use App\Menu;
 
@@ -127,6 +129,13 @@ class Bahan_Controller extends Controller
                 'data' => null
             ],404);
         }
+
+        if ($bahan->stok_bahan != 0) {
+            return response([
+                'message' => 'Bahan harus kosong',
+                'data' => null
+            ],404);
+        }
         
         if ($bahan->id_menu != null) {
             $menu = Menu::find($bahan->id_menu);
@@ -147,5 +156,148 @@ class Bahan_Controller extends Controller
             'message' => 'Hapus Bahan Gagal',
             'data' => null,
         ],400);
+    }
+
+    public function laporanBahanCustom($dtF, $dtL){
+        
+        $menus = Menu::join('bahan', 'menu.id_bahan', '=', 'bahan.id')
+            ->select('menu.id', 'menu.id_bahan', 'bahan.nama_bahan', 'menu.nama_menu',
+                'menu.tipe_menu', 'menu.status_hapus', 'bahan.unit_bahan')->where('menu.status_hapus', '=', 0)
+            ->get();
+        $size = $menus->count();
+        
+        $from = date($dtF);
+        $to = date($dtL);
+
+        for ($i=1; $i <= $size; $i++) { 
+
+            $num[] = 0;
+                                                             
+            $incoming[$i] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'menu.id_bahan', 'bahan.id')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.jml_masuk), 0) as jmlMasuk')
+                ->where('menu.nama_menu', '=', $menus[$i-1]->nama_menu)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->whereBetween('histori__bahan__masuk.tgl_masuk', [$from, $to])              
+                ->first();
+
+            $waste[$i] = DB::table('histori__bahan__keluar')->join('bahan', 'histori__bahan__keluar.id_bahan', 'bahan.id')
+                ->join('menu', 'menu.id_bahan', 'bahan.id')
+                ->selectRaw('ifnull(sum(histori__bahan__keluar.jml_keluar), 0) as jmlKeluar')
+                ->where('menu.nama_menu', '=', $menus[$i-1]->nama_menu)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->where('histori__bahan__keluar.status_keluar', '=', 1)
+                ->whereBetween('histori__bahan__keluar.tgl_keluar', [$from, $to])              
+                ->first();
+
+            $out[$i] = DB::table('histori__bahan__keluar')->join('bahan', 'histori__bahan__keluar.id_bahan', 'bahan.id')
+                ->join('menu', 'menu.id_bahan', 'bahan.id')
+                ->selectRaw('ifnull(sum(histori__bahan__keluar.jml_keluar), 0) as jmlKeluar')
+                ->where('menu.nama_menu', '=', $menus[$i-1]->nama_menu)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->where('histori__bahan__keluar.status_keluar', '=', NULL)
+                ->whereBetween('histori__bahan__keluar.tgl_keluar', [$from, $to])              
+                ->first();
+
+                if ($menus[$i-1]->tipe_menu == 'Makanan Utama') {
+                    $num[0] = $num[0] + 1;
+                    $no = $num[0];
+                } else if ($menus[$i-1]->tipe_menu == 'Minuman') {
+                    $num[1] = $num[1] + 1;
+                    $no = $num[1];
+                } else {
+                    $num[2] = $num[2] + 1;
+                    $no = $num[2];
+                }
+                
+            $laporan[$i] = array( 
+                "no" => $no,               
+                "item_menu" => $menus[$i-1]->nama_menu,
+                "unit" => $menus[$i-1]->unit_bahan,
+                "incoming_stock" => $incoming[$i]->jmlMasuk,
+                "remaining_stock" => $incoming[$i]->jmlMasuk - $out[$i]->jmlKeluar,                
+                "waste_stock" => $waste[$i]->jmlKeluar,
+                "tipe" => $menus[$i-1]->tipe_menu
+            );            
+        }
+        
+        return response([
+            'message' => 'Tampil laporan stok bahan custom berhasil',
+            'data' => $laporan,
+            ],200);       
+    }
+
+    public function laporanBahanMY($item, $dt){
+        
+        $menu = Menu::join('bahan', 'menu.id_bahan', '=', 'bahan.id')
+            ->select('menu.id', 'menu.id_bahan', 'bahan.nama_bahan', 'menu.nama_menu',
+                'menu.status_hapus', 'bahan.unit_bahan')->where('menu.status_hapus', '=', 0)->where('menu.nama_menu', '=', $item)
+            ->first();
+
+        $Shari = Carbon::parse($dt)->daysInMonth;
+        $hari = (int)$Shari;
+        $thn = Carbon::parse($dt)->format('Y');
+        $bln = Carbon::parse($dt)->format('m');
+
+        for ($i=1; $i <= $hari; $i++) {
+            if ($i >= 10) {
+                $date = $thn.'-'.$bln.'-'.$i;
+            } else {
+                $date = $thn.'-'.$bln.'-0'.$i;
+            }
+              
+            $incoming[$i] = DB::table('histori__bahan__masuk')->join('bahan', 'histori__bahan__masuk.id_bahan', 'bahan.id')
+                ->join('menu', 'menu.id_bahan', 'bahan.id')
+                ->selectRaw('ifnull(sum(histori__bahan__masuk.jml_masuk), 0) as jmlMasuk')
+                ->where('menu.nama_menu', '=', $menu->nama_menu)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->where('histori__bahan__masuk.status_hapus', '!=', 1)
+                ->whereDATE('histori__bahan__masuk.tgl_masuk', '=', $date)                
+                ->first();
+
+            $waste[$i] = DB::table('histori__bahan__keluar')->join('bahan', 'histori__bahan__keluar.id_bahan', 'bahan.id')
+                ->join('menu', 'menu.id_bahan', 'bahan.id')
+                ->selectRaw('ifnull(sum(histori__bahan__keluar.jml_keluar), 0) as jmlKeluar')
+                ->where('menu.nama_menu', '=', $menu->nama_menu)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->where('histori__bahan__keluar.status_keluar', '=', 1)
+                ->whereDATE('histori__bahan__keluar.tgl_keluar', '=', $date)         
+                ->first();
+
+            $out[$i] = DB::table('histori__bahan__keluar')->join('bahan', 'histori__bahan__keluar.id_bahan', 'bahan.id')
+                ->join('menu', 'menu.id_bahan', 'bahan.id')
+                ->selectRaw('ifnull(sum(histori__bahan__keluar.jml_keluar), 0) as jmlKeluar')
+                ->where('menu.nama_menu', '=', $menu->nama_menu)
+                ->where('menu.status_hapus', '=', 0)
+                ->where('bahan.status_hapus', '=', 0)
+                ->where('histori__bahan__keluar.status_keluar', '=', NULL)
+                ->whereDATE('histori__bahan__keluar.tgl_keluar', '=', $date)           
+                ->first();
+
+            $rem_stok = $incoming[$i]->jmlMasuk - $out[$i]->jmlKeluar;
+            if ($rem_stok < 0) {
+                $rem_stok = 0;
+            }
+                
+            $laporan[$i] = array( 
+                "no" => $i,               
+                "tanggal" => Carbon::parse($date)->format('d M Y'),
+                "unit" => $menu->unit_bahan,
+                "incoming_stock" => $incoming[$i]->jmlMasuk,
+                "remaining_stock" => $rem_stok,                
+                "waste_stock" => $waste[$i]->jmlKeluar
+            );
+        }
+        
+        return response([
+            'message' => 'Tampil laporan stok bahan month year berhasil',
+            'data' => $laporan,
+            ],200);       
     }
 }

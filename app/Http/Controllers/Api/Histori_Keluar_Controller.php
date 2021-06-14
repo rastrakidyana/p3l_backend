@@ -83,42 +83,85 @@ class Histori_Keluar_Controller extends Controller
         ],200);
     }
 
-    public function tambah(Request $request){
-        $store_data = $request->all();
-        $validate = Validator::make($store_data, [
-            'id_bahan' => 'required',
-            'jml_keluar' => 'required',
-            'tgl_keluar' => 'required',
-        ]);
+    // public function tambah(Request $request){
+    //     $store_data = $request->all();
+    //     $validate = Validator::make($store_data, [
+    //         'id_bahan' => 'required',
+    //         'jml_keluar' => 'required',
+    //         'tgl_keluar' => 'required',
+    //     ]);
 
-        if($validate->fails())
-            return response(['message'=> $validate->errors()],400);
+    //     if($validate->fails())
+    //         return response(['message'=> $validate->errors()],400);
 
-        $store_data['status_keluar'] = 1;
+    //     $store_data['status_keluar'] = 1;
             
-        $bahan = Bahan::find($store_data['id_bahan']);
+    //     $bahan = Bahan::find($store_data['id_bahan']);
 
-        if ($bahan->stok_bahan == 0) {
-            return response([
-                'message' => 'Tambah Histori Bahan Keluar Gagal',
-                'data' => null,
-            ],400);
-        }
+    //     if ($bahan->stok_bahan == 0) {
+    //         return response([
+    //             'message' => 'Tambah Histori Bahan Keluar Gagal',
+    //             'data' => null,
+    //         ],400);
+    //     }
 
-        $bahan->stok_bahan = $bahan->stok_bahan - $store_data['jml_keluar'];  
+    //     $bahan->stok_bahan = $bahan->stok_bahan - $store_data['jml_keluar'];  
         
-        if ($bahan->id_menu != null) {
-            $menu = Menu::find($bahan->id_menu);
-            $menu->stok_menu = $bahan->stok_bahan / $menu->serving_size;
-            $menu->save();
-        }
+    //     if ($bahan->id_menu != null) {
+    //         $menu = Menu::find($bahan->id_menu);
+    //         $menu->stok_menu = $bahan->stok_bahan / $menu->serving_size;
+    //         $menu->save();
+    //     }
 
-        $keluar = Histori_Bahan_Keluar::create($store_data);
-        $bahan->save();       
-        return response([
-            'message' => 'Tambah Histori Bahan Keluar Berhasil',
-            'data' => $keluar,
-        ],200);
-    }
+    //     $keluar = Histori_Bahan_Keluar::create($store_data);
+    //     $bahan->save();       
+    //     return response([
+    //         'message' => 'Tambah Histori Bahan Keluar Berhasil',
+    //         'data' => $keluar,
+    //     ],200);
+    // }
+
+    // public function waste(){
+    //     $timeNow = Carbon::now()->toTimeString();
+    //     $dt = Carbon::today()->toDateString();
+        
+    //     if ($timeNow < '23:30:00' ) {
+    //         return response([
+    //             'message' => 'Belum waktunya membuang stok bahan',
+    //             'data' => null,
+    //         ],404);
+    //     }
+
+    //     $bahans = Bahan::where('status_hapus', '=', 0)->get();
+        
+    //     $i = 0;
+    //     foreach ($bahans as $bahan) {            
+    //         if ($bahan->stok_bahan > 0) {
+    //             $store_data = [];
+    //             $store_data['id_bahan'] = $bahan->id;
+    //             $store_data['jml_keluar'] = $bahan->stok_bahan;
+    //             $store_data['tgl_keluar'] = $dt;
+    //             $store_data['status_keluar'] = 1;   
+
+    //             $bahan->stok_bahan = $bahan->stok_bahan - $store_data['jml_keluar'];
+
+    //             if ($bahan->id_menu != null) {
+    //                 $menu = Menu::find($bahan->id_menu);
+    //                 $menu->stok_menu = $bahan->stok_bahan / $menu->serving_size;
+    //                 $menu->save();
+    //             }
+
+    //             $waste[$i] = Histori_Bahan_Keluar::create($store_data);
+    //             $bahan->save();
+    //             $i = $i + 1;
+    //         }            
+            
+    //     }                                    
+ 
+    //     return response([
+    //         'message' => 'Tambah Bahan Terbuang Berhasil',
+    //         'data' => $waste,
+    //     ],200);
+    // }
 
 }
